@@ -118,10 +118,13 @@ const unsigned long PRINT_INTERVAL_MS = 250;
 // Servo axis
 // ---------------------------------------------------------------------------
 
+Servo panServo;
+Servo tiltServo;
+
 // One servo plus everything it needs to track on its own.
 struct Axis {
   const char *name;
-  Servo servo;
+  Servo *servo;
   int pin;
   int minAngle;
   int maxAngle;
@@ -129,17 +132,12 @@ struct Axis {
   int angle;
   bool moving;
   unsigned long lastMoveMs;
-
-  Axis(const char *name, int pin, int minAngle, int maxAngle, bool reversed,
-       int startAngle)
-      : name(name), pin(pin), minAngle(minAngle), maxAngle(maxAngle),
-        reversed(reversed), angle(startAngle), moving(false), lastMoveMs(0) {}
 };
 
-Axis pan("pan", PAN_SERVO_PIN, PAN_MIN_ANGLE, PAN_MAX_ANGLE, REVERSE_PAN,
-         PAN_START_ANGLE);
-Axis tilt("tilt", TILT_SERVO_PIN, TILT_MIN_ANGLE, TILT_MAX_ANGLE, REVERSE_TILT,
-          TILT_START_ANGLE);
+Axis pan = {"pan", &panServo, PAN_SERVO_PIN, PAN_MIN_ANGLE, PAN_MAX_ANGLE,
+            REVERSE_PAN, PAN_START_ANGLE, false, 0};
+Axis tilt = {"tilt", &tiltServo, TILT_SERVO_PIN, TILT_MIN_ANGLE,
+             TILT_MAX_ANGLE, REVERSE_TILT, TILT_START_ANGLE, false, 0};
 
 bool nightMode = false;
 unsigned long lastPrintMs = 0;
@@ -149,9 +147,9 @@ void setAngle(Axis &axis, int angle) {
   axis.angle = constrain(angle, axis.minAngle, axis.maxAngle);
   // Write before attach so the servo starts at the right angle instead of
   // jumping to the library's default 90 degrees first.
-  axis.servo.write(axis.angle);
-  if (!axis.servo.attached()) {
-    axis.servo.attach(axis.pin);
+  axis.servo->write(axis.angle);
+  if (!axis.servo->attached()) {
+    axis.servo->attach(axis.pin);
   }
   axis.lastMoveMs = millis();
 }
@@ -180,9 +178,9 @@ void trackAxis(Axis &axis, int error) {
     }
   }
 
-  if (DETACH_WHEN_IDLE && axis.servo.attached() &&
+  if (DETACH_WHEN_IDLE && axis.servo->attached() &&
       millis() - axis.lastMoveMs > IDLE_DETACH_MS) {
-    axis.servo.detach();
+    axis.servo->detach();
   }
 }
 
